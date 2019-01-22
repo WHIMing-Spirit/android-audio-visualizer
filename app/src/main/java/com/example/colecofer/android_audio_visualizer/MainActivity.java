@@ -3,6 +3,7 @@ package com.example.colecofer.android_audio_visualizer;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.media.MediaPlayer;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.support.v7.app.AppCompatActivity;
@@ -32,10 +33,10 @@ import static com.loopj.android.http.AsyncHttpClient.log;
 
 public class MainActivity extends AppCompatActivity implements Player.NotificationCallback, ConnectionStateCallback {
 
-    private final String MAIN_TAG = "MAIN_ACTIVITY";
+    private final String TAG = MainActivity.class.getSimpleName();
 
     //TODO: This is Spotify's test account because I don't want to hard code ours into a public repository...
-    private static final String CLIENT_ID    = "089d841ccc194c10a77afad9e1c11d54";
+    private static final String CLIENT_ID = "089d841ccc194c10a77afad9e1c11d54";
     private static final String REDIRECT_URI = "testschema://callback";
     private static final String TRACK_BASE_URI = "spotify:track:";
     private static final String HYPNOTIZE_TRACK_URI = "spotify:track:7KwZNVEaqikRSBSpyhXK2j";
@@ -44,13 +45,15 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
     private static final int REQUEST_CODE = 1337;
 
     //Permission scopes for authentication
-    private static final String[] SCOPES = new String[] {"user-read-private", "playlist-read", "playlist-read-private", "streaming"};
+    private static final String[] SCOPES = new String[]{"user-read-private", "playlist-read", "playlist-read-private", "streaming"};
 
     private SpotifyPlayer player;
     private PlaybackState currentPlaybackState;
     private BroadcastReceiver networkStateReceiver;
     private Metadata metadata;
     private String authToken;
+    private String webApiAuthToken;
+    private SpotifyClient client;
 
 
     @Override
@@ -60,6 +63,15 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
 
         initUI();
         redirectToBrowserForLogin();
+        client = new SpotifyClient();
+        client.getAuthToken(new SpotifyRequestCallBack() {
+            @Override
+            public void spotifyResponse(boolean success, String response) {
+                log("Response: " + response);
+                webApiAuthToken = response;
+
+            }
+        });
 
     }
 
@@ -86,27 +98,19 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
             @Override
             public void onClick(View v) {
 
-                //Get the trackID from the EditText UI element
-                EditText trackEditText = findViewById(R.id.trackEditText);
-                String trackURI = TRACK_BASE_URI + trackEditText.getText().toString();
-                VisualizerModel.getInstance().setTrackURI(trackURI);
-
                 //Make sure the user has successfully logged into the player before starting the song
                 if (isLoggedIn()) {
-                    player.playUri(operationCallback, trackURI, 0, 0);
+                    EditText trackEditText = findViewById(R.id.trackEditText);
+                    String trackURI = TRACK_BASE_URI + trackEditText.getText().toString();
+                    VisualizerModel.getInstance().setTrackURI(trackURI);
+
+                    //Prepare player and transition to visualizer activity
+                    VisualizerModel.getInstance().setPlayer(player);
+                    Intent visualizerActivityIntent = new Intent(MainActivity.this, VisualizerActivity.class);
+                    startActivity(visualizerActivityIntent);
                 } else {
                     log("Error: User was not successfully logged into Spotify.");
                 }
-
-
-                //TODO: This needs to be initiated once we've transitioned into the visualizer activity
-                //TODO: Might want to check if the user is logged into the Spotify player before transitioning to the visualizer
-
-                //Prepare player and transition to visualizer activity
-                VisualizerModel.getInstance().setPlayer(player);
-                Intent visualizerActivityIntent = new Intent(MainActivity.this, VisualizerActivity.class);
-                startActivity(visualizerActivityIntent);
-
             }
         });
 
@@ -123,50 +127,43 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
 
                 //TODO: Check here if the trackID is valid or not. (I think by simply getting a 200 on response should suffice)
 
-                SpotifyClient client = new SpotifyClient();
-
-                //Get the Artist Name
-                client.getArtistName(trackString, authToken, new SpotifyRequestCallBack() {
+                // Get track info
+                client.getTrackInfo(trackString, webApiAuthToken, new SpotifyRequestCallBack() {
                     @Override
                     public void spotifyResponse(boolean success, String response) {
-                        log("Get Artist Name status: " + success);
-                        if (success == true) {
-                            String artistName = SpotifyClient.parseFieldFromJSON(response, "name");
-                            log("Parsed Artist Name: " + artistName);
-                            TextView artistNameText = findViewById(R.id.artistNameTextView);
-                            artistNameText.setText("Artist: " + artistName);
-                        }
+                        log("Track info:");
+                        log(response);
                     }
                 });
 
-                //Get the Album Name
-                client.getAlbumName(trackString, authToken, new SpotifyRequestCallBack() {
-                    @Override
-                    public void spotifyResponse(boolean success, String response) {
-                        log("Get Album Name status: " + success);
-                        log(response);
-                        if (success == true) {
-                            String albumName = SpotifyClient.parseFieldFromJSON(response, "name");
-                            log("Parsed Album Name: " + albumName);
-                            TextView albumText = findViewById(R.id.albumNameTextView);
-                            albumText.setText("Album: " + albumName);
-                        }
-                    }
-                });
-                client.getAlbumArt(trackString, authToken, new SpotifyRequestCallBack() {
-                    @Override
-                    public void spotifyResponse(boolean success, String response) {
-                        log("Get Album Art status: " + success);
-                        log(response);
-                        if (success == true) {
-                            String albumName = SpotifyClient.parseFieldFromJSON(response, "name");
-                            log("Parsed Album Name: " + albumName);
-                            TextView albumText = findViewById(R.id.albumNameTextView);
-                            albumText.setText("Album: " + albumName);
-                        }
-                    }
-                });
-                //TODO: Update View and CoverArt ?
+//                //Get the Artist Name
+//                client.getArtistName(trackString, authToken, new SpotifyRequestCallBack() {
+//                    @Override
+//                    public void spotifyResponse(boolean success, String response) {
+//                        log("Get Artist Name status: " + success);
+//                        if (success == true) {
+//                            String artistName = SpotifyClient.parseFieldFromJSON(response, "name");
+//                            log("Parsed Artist Name: " + artistName);
+//                            TextView artistNameText = findViewById(R.id.artistNameTextView);
+//                            artistNameText.setText("Artist: " + artistName);
+//                        }
+//                    }
+//                });
+//
+//                //Get the Album Name
+//                client.getAlbumName(trackString, authToken, new SpotifyRequestCallBack() {
+//                    @Override
+//                    public void spotifyResponse(boolean success, String response) {
+//                        log("Get Album Name status: " + success);
+//                        log(response);
+//                        if (success == true) {
+//                            String albumName = SpotifyClient.parseFieldFromJSON(response, "name");
+//                            log("Parsed Album Name: " + albumName);
+//                            TextView albumText = findViewById(R.id.albumNameTextView);
+//                            albumText.setText("Album: " + albumName);
+//                        }
+//                    }
+//                });
 
             }
         });
@@ -204,6 +201,7 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
 
     /**
      * Called when authentication was successful, and then initializes the SpotifyPlayer
+     *
      * @param authResponse The response from a successful authentication
      */
     private void onAuthenticationComplete(AuthenticationResponse authResponse) {
@@ -236,6 +234,7 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
 
     /**
      * Check if there is a user logged into the player
+     *
      * @return True if there is someone logged in.
      */
     public boolean isLoggedIn() {
@@ -279,7 +278,7 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
     @Override
     public void onLoggedIn() {
         log("Login complete");
-    } 
+    }
 
     @Override
     public void onLoggedOut() {
@@ -309,6 +308,7 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
 
     /**
      * This method is invoked whenever a playback event occurs (e.g. play / pause)
+     *
      * @param playerEvent The event that occured
      */
     @Override
@@ -320,8 +320,11 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
 
     /**
      * Removes the need to specify the TAG each time you log.
+     *
      * @param message The message to log
      */
-    public void log(String message) { Log.d(MAIN_TAG, message);}
+    public void log(String message) {
+        Log.d(TAG, message);
+    }
 
 }
