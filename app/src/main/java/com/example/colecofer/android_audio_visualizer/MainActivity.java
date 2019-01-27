@@ -3,6 +3,7 @@ package com.example.colecofer.android_audio_visualizer;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.media.MediaPlayer;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -13,6 +14,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.spotify.sdk.android.authentication.AuthenticationClient;
@@ -28,6 +30,7 @@ import com.spotify.sdk.android.player.Player;
 import com.spotify.sdk.android.player.PlayerEvent;
 import com.spotify.sdk.android.player.Spotify;
 import com.spotify.sdk.android.player.SpotifyPlayer;
+
 
 import static com.loopj.android.http.AsyncHttpClient.log;
 
@@ -54,12 +57,19 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
     private String authToken;
     private String webApiAuthToken;
     private SpotifyClient client;
+    private Bitmap albumArt;
+    private boolean enablePlayButton;
+    private Button playButton;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        playButton = findViewById(R.id.playButton);
+        enablePlayButton = false;
+        setPlayButton();
 
         initUI();
         redirectToBrowserForLogin();
@@ -120,6 +130,8 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
         searchButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                enablePlayButton = false;
+                setPlayButton();
                 currentPlaybackState = player.getPlaybackState();
 
                 EditText trackEditText = findViewById(R.id.trackEditText);
@@ -131,50 +143,36 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
                 client.getTrackInfo(trackString, webApiAuthToken, new SpotifyRequestCallBack() {
                     @Override
                     public void spotifyResponse(boolean success, String response) {
-                        log("Track info:");
                         log(response);
+                        TextView artistNameText = findViewById(R.id.artistNameTextView);
+                        artistNameText.setText(SpotifyClient.getArtistName(response));
+                        TextView albumNameText = findViewById(R.id.albumNameTextView);
+                        albumNameText.setText((SpotifyClient.getAlbumName(response)));
+                        String imageUrl = SpotifyClient.getArtUrl(response);
+                        log(imageUrl);
+                        final ImageView albumArtView = findViewById(R.id.albumArtImageView);
+                        SpotifyClient.getAlbumArt(imageUrl, new BitmapRequestCallBack() {
+                            @Override
+                            public void bitmapResponse(boolean success, Bitmap bitmap) {
+                                if (success == true) {
+                                    albumArtView.setImageBitmap(bitmap);
+                                    float[][]colors = SpotifyClient.getAlbumArtColors(bitmap);
+                                    enablePlayButton = true;
+                                    setPlayButton();
+                                }
+                            }
+                        });
                     }
                 });
-
-//                //Get the Artist Name
-//                client.getArtistName(trackString, authToken, new SpotifyRequestCallBack() {
-//                    @Override
-//                    public void spotifyResponse(boolean success, String response) {
-//                        log("Get Artist Name status: " + success);
-//                        if (success == true) {
-//                            String artistName = SpotifyClient.parseFieldFromJSON(response, "name");
-//                            log("Parsed Artist Name: " + artistName);
-//                            TextView artistNameText = findViewById(R.id.artistNameTextView);
-//                            artistNameText.setText("Artist: " + artistName);
-//                        }
-//                    }
-//                });
-//
-//                //Get the Album Name
-//                client.getAlbumName(trackString, authToken, new SpotifyRequestCallBack() {
-//                    @Override
-//                    public void spotifyResponse(boolean success, String response) {
-//                        log("Get Album Name status: " + success);
-//                        log(response);
-//                        if (success == true) {
-//                            String albumName = SpotifyClient.parseFieldFromJSON(response, "name");
-//                            log("Parsed Album Name: " + albumName);
-//                            TextView albumText = findViewById(R.id.albumNameTextView);
-//                            albumText.setText("Album: " + albumName);
-//                        }
-//                    }
-//                });
-
             }
         });
 
     }
 
 
-    private void setCoverArt() {
-
+    private void setPlayButton() {
+        playButton.setEnabled(enablePlayButton);
     }
-
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {

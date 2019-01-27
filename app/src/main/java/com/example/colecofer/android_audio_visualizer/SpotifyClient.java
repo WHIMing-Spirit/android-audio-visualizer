@@ -1,19 +1,20 @@
 package com.example.colecofer.android_audio_visualizer;
 
+import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.support.v7.graphics.Palette;
 import android.util.Log;
 
 import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.BinaryHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
 import com.loopj.android.http.TextHttpResponseHandler;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import cz.msebera.android.httpclient.Header;
-
-import android.support.v7.graphics.Palette;
-import android.graphics.Bitmap;
 
 public class SpotifyClient {
 
@@ -24,7 +25,7 @@ public class SpotifyClient {
     private final String TRACK_URL = "/tracks/";
     private final String ARTIST_URL = "/artists/";
     private final String ALBUM_URL = "";
-    private final String COVER_ART_URL = "https://i.scdn.co/image/6a79792a433af1786048c1dac022f5ab33f093f0";
+    private final String COVER_ART_URL = "";
     private final String AUTH_URL = "https://accounts.spotify.com/api/token";
 
     //TODO: Change these to our personal information (this is a public repo...)
@@ -36,6 +37,7 @@ public class SpotifyClient {
 
     /**
      * Gets the authorization token given the clientid and clientsecret
+     *
      * @param callback
      */
     public void getAuthToken(final SpotifyRequestCallBack callback) {
@@ -66,6 +68,7 @@ public class SpotifyClient {
     /**
      * Recieves general information about a track given a track ID.
      * Specifically
+     *
      * @param trackID
      * @param authToken
      * @param callback
@@ -94,93 +97,93 @@ public class SpotifyClient {
     }
 
     /**
-     * Gets the artist name given the Spotify ID
-     * @param trackID The Spotify / Track ID
-     * @param authToken The authentication token
-     * @param callback Callback function to be implemented
+     * Parse the artist name from the JSON response
+     *
+     * @param responseJSON JSON response from the track info endpoint
+     * @return string representing the artist name
      */
-    public void getArtistName(String trackID, String authToken, final SpotifyRequestCallBack callback) {
-        String fullArtistURL = BASE_URL + ARTIST_URL + trackID;
-
-        AsyncHttpClient client = new AsyncHttpClient();
-        client.addHeader("Accept", "application/json");
-        client.addHeader("Content-Type", "application/json");
-        client.addHeader("Authorization", authToken);
-
-        client.get(fullArtistURL, new TextHttpResponseHandler() {
-
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, String responseString) {
-                callback.spotifyResponse(true, responseString);
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
-                callback.spotifyResponse(false, responseString);
-            }
-
-        });
+    public static String getArtistName(String responseJSON) {
+        JSONObject json = convertStringToJSON(responseJSON);
+        String value = "Error: Couldn't find field";
+        try {
+            value = json.getJSONArray("artists").getJSONObject(0).getString("name");
+        } catch (JSONException e) {
+            Log.d("Spotify", "Error - Could not extract artist name from response" + e.getMessage());
+        }
+        return value;
     }
 
     /**
-     * Gets the album name given a Spotify albumID
-     * @param albumID
-     * @param authToken
-     * @param callback
+     * Parse the album name from the JSON response
+     *
+     * @param responseJSON JSON response from the track info endpoint
+     * @return string representing the album name
      */
-    public void getAlbumName(String albumID, String authToken, final SpotifyRequestCallBack callback) {
-        String fullArtistURL = BASE_URL + ALBUM_URL + albumID;
-
-        AsyncHttpClient client = new AsyncHttpClient();
-        client.addHeader("Accept", "application/json");
-        client.addHeader("Content-Type", "application/json");
-        client.addHeader("Authorization", authToken);
-
-        client.get(fullArtistURL, new TextHttpResponseHandler() {
-
-            @Override
-            public void onSuccess(int statusCode, Header[] headers, String responseString) {
-                callback.spotifyResponse(true, responseString);
-            }
-
-            @Override
-            public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
-                callback.spotifyResponse(false, responseString);
-            }
-
-        });
+    public static String getAlbumName(String responseJSON) {
+        JSONObject json = convertStringToJSON(responseJSON);
+        String value = "Error: Couldn't find field";
+        try {
+            value = json.getString("name");
+        } catch (JSONException e) {
+            Log.d("Spotify", "Error - Could not extract album name from response" + e.getMessage());
+        }
+        return value;
     }
-    public void getAlbumArt(String albumID, String authToken, final SpotifyRequestCallBack callback) {
-        String fullArtistURL = BASE_URL + ALBUM_URL + albumID;
-        Bitmap AlbumArt = BitmapFactory.decodeFile("/LifeAfterDeath.bmp");
-        Palette AlbumPallet = createPaletteSync(AlbumArt);
-        int primary = AlbumPallet.getLightVibrantColor(0);
-        int secondary = AlbumPallet.getDarkVibrantColor(0);
 
+    public static String getArtUrl(String responseJSON) {
+        JSONObject json = convertStringToJSON(responseJSON);
+        String value = "Error: Couldn't find field";
+        JSONArray imageArray;
+        boolean found = false;
+        try {
+            int index = 0;
+            int height;
+            int width;
+
+            while(found == false) {
+                imageArray = json.getJSONObject("album").getJSONArray("images");
+                height = Integer.parseInt(imageArray.getJSONObject(index).getString("height"));
+                width = Integer.parseInt(imageArray.getJSONObject(index).getString("width"));
+
+                // Ensure that image is no bigger than 640 x 640
+                if (height <= 640 && width <= 640) {
+                    found = true;
+                    value = imageArray.getJSONObject(index).getString("url");
+                }
+                index++;
+            }
+            return value;
+
+        } catch (JSONException e) {
+            Log.d("Spotify", "Error - Could not extract album art url from response" + e.getMessage());
+        }
+        return value;
+    }
+
+    public static void getAlbumArt(String url, final BitmapRequestCallBack bitmapCallback) {
         AsyncHttpClient client = new AsyncHttpClient();
-        client.addHeader("Accept", "application/json");
-        client.addHeader("Content-Type", "application/json");
-        client.addHeader("Authorization", authToken);
-
-        client.get(fullArtistURL, new TextHttpResponseHandler() {
-
+        Bitmap myBitmap;
+        client.get(url, new BinaryHttpResponseHandler() {
             @Override
-            public void onSuccess(int statusCode, Header[] headers, String responseString) {
-                callback.spotifyResponse(true, responseString);
+            public void onSuccess(int statusCode, Header[] headers, byte[] binaryData) {
+                int offset = 0;
+                bitmapCallback.bitmapResponse(true, BitmapFactory.decodeByteArray(binaryData, offset, binaryData.length));
             }
 
             @Override
-            public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
-                callback.spotifyResponse(false, responseString);
-            }
+            public void onFailure(int statusCode, Header[] headers, byte[] binaryData, Throwable error) {
+                // TODO update to a default value
+                bitmapCallback.bitmapResponse(true, null);
 
+            }
         });
     }
 
     /**
      * Calls the Spotify features API end-point for the passed in trackID.
      * TODO: Remove hard coded auth token
-     * @param trackID The ID for any given Spotify song
+     *
+     * @param trackID  The ID for any given Spotify song
      * @param callback function that gets invoked after success or failure
      */
     public void getFeaturesFromTrackID(String trackID, String authToken, final SpotifyRequestCallBack callback) {
@@ -216,15 +219,46 @@ public class SpotifyClient {
 
         });
     }
+    public static float[][] getAlbumArtColors(Bitmap albumArt) {
+        Palette AlbumPallet = createPaletteSync(albumArt);
+        AlbumPallet.getSwatches();
+        Palette.Swatch primarySwatch = AlbumPallet.getDominantSwatch();
+        Palette.Swatch secondarySwatch = AlbumPallet.getVibrantSwatch();
+        Palette.Swatch tertiarySwatch = AlbumPallet.getMutedSwatch();
 
+        float colors[][] = new float[][]{{0,0,0},{0,0,0},{0,0,0}};
+
+        for(int i = 0; i < 3; ++i) {
+            if(primarySwatch != null)
+                colors[0][i] = primarySwatch.getHsl()[i];
+            else
+                colors[0][i] = 0;
+            if(secondarySwatch != null)
+                colors[1][i] = secondarySwatch.getHsl()[i];
+            else
+                colors[1][i] = 0;
+            if(tertiarySwatch != null)
+                colors[2][i] = tertiarySwatch.getHsl()[i];
+            else
+                colors[2][i] = 0;
+
+        }
+
+        return colors;
+    }
+    public static Palette createPaletteSync(Bitmap bitmap) {
+        Palette p = Palette.from(bitmap).generate();
+        return p;
+    }
 
     /**
      * Calls the Spotify search API end-point and returns the JSON response of search
      * queries through the callback function.
      * TODO: Remove hard coded auth token
-     * @param query Name of the song
+     *
+     * @param query      Name of the song
      * @param searchType A list of types to search for (e.g. "album, artist, playlist, track")
-     * @param callback function that gets invoked after success or failure
+     * @param callback   function that gets invoked after success or failure
      */
     public void searchSpotify(String query, String searchType, String authToken, final SpotifyRequestCallBack callback) {
         String fullSearchURL = BASE_URL + SEARCH_URL;
@@ -266,6 +300,7 @@ public class SpotifyClient {
 
     /**
      * Converts a String in JSON format to a JSONObject
+     *
      * @param jsonStr The string in JSON format
      * @return The JSONObject, or null if there was an error
      */
@@ -282,6 +317,7 @@ public class SpotifyClient {
 
     /**
      * Parses a json block and returns the passed in field
+     *
      * @param responseJSON The json block from the Spotify request
      * @return The desired field
      */
@@ -295,21 +331,19 @@ public class SpotifyClient {
         }
         return value;
     }
-    // Generate palette synchronously and return it
-    public Palette createPaletteSync(Bitmap bitmap) {
-        Palette p = Palette.from(bitmap).generate();
-        return p;
-    }
 
-    // Generate palette asynchronously and use it on a different
-// thread using onGenerated()
-//    public void createPaletteAsync(Bitmap bitmap) {
-//        Palette.from(bitmap).generate(new PaletteAsyncListener() {
-//            public void onGenerated(Palette p) {
-//                // Use generated instance
+//    public static String parseFieldFromJSON(String responseJSON, String[] fields) {
+//        JSONObject json = convertStringToJSON(responseJSON);
+//        String value = "Error: Couldn't find field";
+//        try {
+//            for (int i = 0; i < fields.length - 1; i++)
+//            {
+//                json = json.getJSONObject(fields[i]);
 //            }
-//        });
+////            value = json.getString(fields[fields.length - 1]);
+//        } catch (JSONException e) {
+//            Log.d("Spotify", "Error - Could not extract field from response" + e.getMessage());
+//        }
+//        return value;
 //    }
-
-
 }
