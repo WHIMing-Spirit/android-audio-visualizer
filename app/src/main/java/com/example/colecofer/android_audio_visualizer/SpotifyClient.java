@@ -21,11 +21,7 @@ public class SpotifyClient {
     private final String BASE_URL = "https://api.spotify.com/v1";
     private final String FEATURES_URL = "/audio-features/";
     private final String SEARCH_URL = "/search/";
-    private final String PLAYER_URL = "/me/player/";
     private final String TRACK_URL = "/tracks/";
-    private final String ARTIST_URL = "/artists/";
-    private final String ALBUM_URL = "";
-    private final String COVER_ART_URL = "";
     private final String AUTH_URL = "https://accounts.spotify.com/api/token";
 
     //TODO: Change these to our personal information (this is a public repo...)
@@ -54,7 +50,6 @@ public class SpotifyClient {
             public void onSuccess(int statusCode, Header[] headers, String responseString) {
                 String access_token = parseFieldFromJSON(responseString, "access_token");
                 callback.spotifyResponse(true, access_token);
-//                callback.spotifyResponse(true, responseString);
             }
 
             @Override
@@ -64,6 +59,7 @@ public class SpotifyClient {
 
         });
     }
+
 
     /**
      * Recieves general information about a track given a track ID.
@@ -96,6 +92,7 @@ public class SpotifyClient {
         });
     }
 
+
     /**
      * Parse the artist name from the JSON response
      *
@@ -113,6 +110,7 @@ public class SpotifyClient {
         return value;
     }
 
+
     /**
      * Parse the album name from the JSON response
      *
@@ -129,6 +127,7 @@ public class SpotifyClient {
         }
         return value;
     }
+
 
     public static String getArtUrl(String responseJSON) {
         JSONObject json = convertStringToJSON(responseJSON);
@@ -160,6 +159,7 @@ public class SpotifyClient {
         return value;
     }
 
+
     public static void getAlbumArt(String url, final BitmapRequestCallBack bitmapCallback) {
         AsyncHttpClient client = new AsyncHttpClient();
         Bitmap myBitmap;
@@ -178,6 +178,7 @@ public class SpotifyClient {
             }
         });
     }
+
 
     /**
      * Calls the Spotify features API end-point for the passed in trackID.
@@ -219,6 +220,8 @@ public class SpotifyClient {
 
         });
     }
+
+
     public static float[][] getAlbumArtColors(Bitmap albumArt) {
         Palette AlbumPallet = createPaletteSync(albumArt);
         AlbumPallet.getSwatches();
@@ -250,6 +253,7 @@ public class SpotifyClient {
         Palette p = Palette.from(bitmap).generate();
         return p;
     }
+
 
     /**
      * Calls the Spotify search API end-point and returns the JSON response of search
@@ -332,18 +336,4 @@ public class SpotifyClient {
         return value;
     }
 
-//    public static String parseFieldFromJSON(String responseJSON, String[] fields) {
-//        JSONObject json = convertStringToJSON(responseJSON);
-//        String value = "Error: Couldn't find field";
-//        try {
-//            for (int i = 0; i < fields.length - 1; i++)
-//            {
-//                json = json.getJSONObject(fields[i]);
-//            }
-////            value = json.getString(fields[fields.length - 1]);
-//        } catch (JSONException e) {
-//            Log.d("Spotify", "Error - Could not extract field from response" + e.getMessage());
-//        }
-//        return value;
-//    }
 }

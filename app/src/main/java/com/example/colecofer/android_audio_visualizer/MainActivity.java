@@ -156,7 +156,7 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
                             public void bitmapResponse(boolean success, Bitmap bitmap) {
                                 if (success == true) {
                                     albumArtView.setImageBitmap(bitmap);
-                                    float[][]colors = SpotifyClient.getAlbumArtColors(bitmap);
+                                    VisualizerModel.getInstance().setColors(SpotifyClient.getAlbumArtColors(bitmap));
                                     enablePlayButton = true;
                                     setPlayButton();
                                 }
@@ -313,7 +313,6 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
     public void onPlaybackEvent(PlayerEvent playerEvent) {
         currentPlaybackState = player.getPlaybackState();
         metadata = player.getMetadata();
-        //updateView();
     }
 
     /**
