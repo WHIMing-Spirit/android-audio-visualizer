@@ -93,6 +93,23 @@ public class SpotifyClient {
     }
 
     /**
+     * Parse the duration in milliseconds from the JSON response
+     *
+     * @param responseJSON String version of JSON response from the track info endpoint
+     * @return integer representing duration of the track in milliseconds
+     */
+    public static int getDuration(String responseJSON) {
+        JSONObject json = convertStringToJSON(responseJSON);
+        int durationInMillis = -1;
+        try {
+            durationInMillis = json.getInt("duration_ms");
+        } catch (JSONException e) {
+            Log.d("Spotify", "Error - Could not extract duration from response" + e.getMessage());
+        }
+        return durationInMillis;
+    }
+
+    /**
      * Parse the artist name from the JSON response
      *
      * @param responseJSON JSON response from the track info endpoint

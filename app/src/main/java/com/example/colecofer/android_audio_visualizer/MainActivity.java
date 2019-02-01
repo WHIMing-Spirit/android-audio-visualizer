@@ -149,6 +149,7 @@ public class MainActivity extends AppCompatActivity implements Player.Notificati
                         albumNameText.setText((SpotifyClient.getAlbumName(response)));
                         String imageUrl = SpotifyClient.getArtUrl(response);
                         log(imageUrl);
+                        VisualizerModel.getInstance().setDuration(SpotifyClient.getDuration(response));
                         final ImageView albumArtView = findViewById(R.id.albumArtImageView);
                         SpotifyClient.getAlbumArt(imageUrl, new BitmapRequestCallBack() {
                             @Override
